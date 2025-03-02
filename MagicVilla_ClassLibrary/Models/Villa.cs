@@ -1,7 +1,12 @@
-﻿namespace MagicVilla_ClassLibrary.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+namespace MagicVilla_ClassLibrary.Models
 {
     public class Villa
     {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string Name { get; set; }
         public string Details { get; set; }
