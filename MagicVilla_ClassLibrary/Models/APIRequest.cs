@@ -1,4 +1,4 @@
-﻿using MagicVilla_ClassLibrary.Utility;
+﻿using static MagicVilla_ClassLibrary.Utility.SD;
 
 namespace MagicVilla_ClassLibrary.Models
 {

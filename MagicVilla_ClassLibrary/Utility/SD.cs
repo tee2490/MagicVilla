@@ -1,10 +1,13 @@
 ﻿namespace MagicVilla_ClassLibrary.Utility
 {
-    public enum ApiType
+    public static class SD
     {
-        GET,
-        POST,
-        PUT,
-        DELETE
+        public enum ApiType
+        {
+            GET,
+            POST,
+            PUT,
+            DELETE
+        }
     }
 }
