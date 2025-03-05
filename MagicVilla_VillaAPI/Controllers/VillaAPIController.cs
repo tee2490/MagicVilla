@@ -3,6 +3,7 @@ using MagicVilla_ClassLibrary.Models;
 using MagicVilla_ClassLibrary.Models.Dto;
 using MagicVilla_VillaAPI.Data;
 using MagicVilla_VillaAPI.Repository.IRepostiory;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ namespace MagicVilla_VillaAPI.Controllers
         }
 
 
+        [Authorize]
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<APIResponse>> GetVillas()
@@ -49,6 +51,7 @@ namespace MagicVilla_VillaAPI.Controllers
         }
 
 
+        [Authorize(Roles = "admin")]
         [HttpGet("{id:int}", Name = "GetVilla")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -125,6 +128,7 @@ namespace MagicVilla_VillaAPI.Controllers
         }
 
 
+        [Authorize(Roles = "CUSTOM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
