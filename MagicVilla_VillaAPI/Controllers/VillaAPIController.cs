@@ -51,7 +51,7 @@ namespace MagicVilla_VillaAPI.Controllers
         }
 
 
-        [Authorize(Roles = "admin")]
+      //  [Authorize(Roles = "admin")]
         [HttpGet("{id:int}", Name = "GetVilla")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
