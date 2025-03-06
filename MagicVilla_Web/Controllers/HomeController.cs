@@ -6,6 +6,7 @@ using MagicVilla_ClassLibrary.Models.Dto;
 using MagicVilla_ClassLibrary.Models;
 using MagicVilla_Web.Services.IServices;
 using Newtonsoft.Json;
+using MagicVilla_ClassLibrary.Utility;
 
 namespace MagicVilla_Web.Controllers;
 public class HomeController : Controller
@@ -22,7 +23,7 @@ public class HomeController : Controller
     {
         List<VillaDTO> list = new();
 
-        var response = await _villaService.GetAllAsync<APIResponse>();
+        var response = await _villaService.GetAllAsync<APIResponse>(HttpContext.Session.GetString(SD.SessionToken));
         if (response != null && response.IsSuccess)
         {
             list = JsonConvert.DeserializeObject<List<VillaDTO>>(Convert.ToString(response.Result));
