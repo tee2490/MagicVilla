@@ -64,7 +64,9 @@ builder.Services.AddAuthentication(x =>
             ValidateIssuer = false,
             ValidateAudience = false
         };
-    }); 
+    });
+
+builder.Services.AddResponseCaching();
 
 var app = builder.Build();
 
