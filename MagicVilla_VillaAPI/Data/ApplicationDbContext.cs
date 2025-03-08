@@ -1,9 +1,10 @@
 ﻿using MagicVilla_ClassLibrary.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace MagicVilla_VillaAPI.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {
@@ -14,13 +15,16 @@ namespace MagicVilla_VillaAPI.Data
             base.OnConfiguring(optionsBuilder);
             optionsBuilder.UseSqlServer("Server=Teeradet;Database=TestVilla;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True");
         }
-
+      
         public DbSet<Villa> Villas { get; set; }
         public DbSet<VillaNumber> VillaNumbers { get; set; }
         public DbSet<LocalUser> LocalUsers { get; set; }
+        public DbSet<ApplicationUser> ApplicationUsers { get; set; }
 
+       
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<Villa>().HasData(
                 new Villa
                 {
