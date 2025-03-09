@@ -1,14 +1,14 @@
+﻿using MagicVilla_ClassLibrary.Models;
 using MagicVilla_VillaAPI;
 using MagicVilla_VillaAPI.Data;
-using MagicVilla_VillaAPI.Repository.IRepostiory;
 using MagicVilla_VillaAPI.Repository;
+using MagicVilla_VillaAPI.Repository.IRepostiory;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Mvc;
-using MagicVilla_ClassLibrary.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +18,13 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IVillaNumberRepository, VillaNumberRepository>();
 builder.Services.AddScoped<IVillaRepository, VillaRepository>();
 builder.Services.AddAutoMapper(typeof(MappingConfig));
+
+#region Important ต้องอยู่เรียงลำดับกันแบบนี้ มิฉนั้นติดปัญหา [Authorize] ไม่ผ่าน
 builder.Services.AddDbContext<ApplicationDbContext>();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+     .AddEntityFrameworkStores<ApplicationDbContext>();
+#endregion Important
+
 builder.Services.AddControllers(option =>
 {
     option.CacheProfiles.Add("Default30",
@@ -27,7 +33,7 @@ builder.Services.AddControllers(option =>
            Duration = 30
        });
 }).AddNewtonsoftJson();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -59,6 +65,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+#region JWT
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 builder.Services.AddAuthentication(x =>
 {
@@ -77,10 +84,10 @@ builder.Services.AddAuthentication(x =>
             ValidateAudience = false
         };
     });
+#endregion JWT
 
 builder.Services.AddResponseCaching();
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-     .AddEntityFrameworkStores<ApplicationDbContext>();
+
 
 var app = builder.Build();
 
@@ -93,6 +100,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
