@@ -30,6 +30,7 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ResponseCache(Duration = 30)]
         public async Task<ActionResult<APIResponse>> GetVillas()
         {
             try
