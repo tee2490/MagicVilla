@@ -2,6 +2,7 @@
 using MagicVilla_ClassLibrary.Utility;
 using MagicVilla_Web.Services.IServices;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace MagicVilla_Web.Services
@@ -50,6 +51,12 @@ namespace MagicVilla_Web.Services
                 }
 
                 HttpResponseMessage apiResponse = null;
+
+                //แนบโทเคนไปกับ header
+                if (!string.IsNullOrEmpty(apiRequest.Token))
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiRequest.Token);
+                }
 
                 apiResponse = await client.SendAsync(message);
 
