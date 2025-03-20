@@ -9,5 +9,7 @@
             PUT,
             DELETE
         }
+
+        public static string AccessToken = "JWTToken";
     }
 }
