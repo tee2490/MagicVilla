@@ -1,4 +1,4 @@
-global using MagicVilla_VillaAPI.Data;
+﻿global using MagicVilla_VillaAPI.Data;
 global using MagicVilla_VillaAPI;
 using MagicVilla_VillaAPI.Repository.IRepostiory;
 using MagicVilla_VillaAPI.Repository;
@@ -13,6 +13,11 @@ using Microsoft.AspNetCore.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+#region Important ต้องอยู่เรียงลำดับกัน และนำมาวางไว้ข้างบนสุด มิฉนั้นติดปัญหา [Authorize] ไม่ผ่าน
+builder.Services.AddDbContext<ApplicationDbContext>();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+     .AddEntityFrameworkStores<ApplicationDbContext>();
+#endregion Important
 
 builder.Services.AddControllers(option =>
 {
@@ -70,10 +75,6 @@ builder.Services.AddAuthentication(x =>
             ValidateAudience = false
         };
     });
-
-builder.Services.AddDbContext<ApplicationDbContext>();
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-      .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 
