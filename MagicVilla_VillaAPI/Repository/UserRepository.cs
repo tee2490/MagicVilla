@@ -53,7 +53,8 @@ namespace MagicVilla_VillaAPI.Repository
                 };
             }
 
-            var accessToken = await GetAccessToken(user);
+            var jwtTokenId = $"JTI{Guid.NewGuid()}";
+            var accessToken = await GetAccessToken(user, jwtTokenId);
             TokenDTO tokenDto = new TokenDTO()
             {
                 AccessToken = accessToken
@@ -95,7 +96,7 @@ namespace MagicVilla_VillaAPI.Repository
             return new UserDTO();
         }
 
-        protected async Task<string> GetAccessToken(ApplicationUser user)
+        protected async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
         {
             //if user was found generate JWT Token
 
@@ -107,8 +108,10 @@ namespace MagicVilla_VillaAPI.Repository
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                      new Claim(ClaimTypes.Name, user.UserName.ToString()),
-                      new Claim(ClaimTypes.Role, roles.FirstOrDefault())
+                     new Claim(ClaimTypes.Name, user.UserName.ToString()),
+                     new Claim(ClaimTypes.Role, roles.FirstOrDefault()),
+                     new Claim(JwtRegisteredClaimNames.Jti, jwtTokenId),
+                     new Claim(JwtRegisteredClaimNames.Sub, user.Id)
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
                 SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -122,6 +125,23 @@ namespace MagicVilla_VillaAPI.Repository
         public Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
         {
             throw new NotImplementedException();
+        }
+
+        protected (bool isSuccessful, string userId, string tokenId) GetAccessTokenData(string accessToken)
+        {
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwt = tokenHandler.ReadJwtToken(accessToken);
+                var jwtTokenId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Jti).Value;
+                var userId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Sub).Value;
+                return (true, userId, jwtTokenId);
+
+            }
+            catch
+            {
+                return (false, null, null);
+            }
         }
     }
 }
