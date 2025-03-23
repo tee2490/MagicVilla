@@ -53,27 +53,10 @@ namespace MagicVilla_VillaAPI.Repository
                 };
             }
 
-            //if user was found generate JWT Token
-
-            var roles = await _userManager.GetRolesAsync(user);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(secretKey);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                      new Claim(ClaimTypes.Name, user.UserName.ToString()),
-                      new Claim(ClaimTypes.Role, roles.FirstOrDefault())
-                }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var accessToken = await GetAccessToken(user);
             TokenDTO tokenDto = new TokenDTO()
             {
-                AccessToken = tokenHandler.WriteToken(token),
+                AccessToken = accessToken
             };
             return tokenDto;
         }
@@ -110,6 +93,30 @@ namespace MagicVilla_VillaAPI.Repository
 
             }
             return new UserDTO();
+        }
+
+        protected async Task<string> GetAccessToken(ApplicationUser user)
+        {
+            //if user was found generate JWT Token
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(secretKey);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                      new Claim(ClaimTypes.Name, user.UserName.ToString()),
+                      new Claim(ClaimTypes.Role, roles.FirstOrDefault())
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenStr = tokenHandler.WriteToken(token);
+            return tokenStr;
         }
     }
 }
