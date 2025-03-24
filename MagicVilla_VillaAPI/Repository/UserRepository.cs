@@ -3,6 +3,7 @@ using MagicVilla_ClassLibrary.Models;
 using MagicVilla_ClassLibrary.Models.Dto;
 using MagicVilla_VillaAPI.Repository.IRepostiory;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -125,23 +126,63 @@ namespace MagicVilla_VillaAPI.Repository
         }
 
         //ขั้นตอนการ refresh token
-        public Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
+        public async Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
         {
             // Find an existing refresh token
+            // ค้นหารีเฟรชโทเคนจาก database ว่ามีหรือไม่
+            var existingRefreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(u => u.Refresh_Token == tokenDTO.RefreshToken);
+            if (existingRefreshToken == null)
+            {
+                return new TokenDTO();
+            }
 
-
+            #region A ตรวจสอบความถูกต้องของโทเคนที่ส่งมาเข้า
             // Compare data from existing refresh and access token provided and if there is any missmatch then consider it as a fraud
+            // ตรวจสอบว่า accesstoken ที่ส่งเข้ามาถูกต้องหรือไม่
+            var accessTokenData = GetAccessTokenData(tokenDTO.AccessToken);
+            if (!accessTokenData.isSuccessful || accessTokenData.userId != existingRefreshToken.UserId
+                || accessTokenData.tokenId != existingRefreshToken.JwtTokenId)
+            {
+                existingRefreshToken.IsValid = false;
+                _db.SaveChanges();
+                return new TokenDTO();
+            }
 
             // When someone tries to use not valid refresh token, fraud possible
 
             // If just expired then mark as invalid and return empty
+            // ถ้าโทเคนหมดอายุ ให้ส่งค่าว่างกลับไป
+            if (existingRefreshToken.ExpiresAt < DateTime.UtcNow)
+            {
+                existingRefreshToken.IsValid = false;
+                _db.SaveChanges();
+                return new TokenDTO();
+            }
+            #endregion A ตรวจสอบความถูกต้องของโทเคนที่ส่งมาเข้า
 
+            #region B สร้าง accessToken refreshToken ให้ใหม่
             // replace old refresh with a new one with updated expire date
+            // ให้อัพเดท refreshTokenใหม่ คือ ExpiresAt และ Refresh_Token
+            var newRefreshToken = await CreateNewRefreshToken(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
 
             // revoke existing refresh token
+            existingRefreshToken.IsValid = false;
+            _db.SaveChanges();
 
             // generate new access token
-            return null;
+            // สร้าง accessToken ใหม่
+            var applicationUser = _db.ApplicationUsers.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+            if (applicationUser == null)
+                return new TokenDTO();
+
+            var newAccessToken = await GetAccessToken(applicationUser, existingRefreshToken.JwtTokenId);
+
+            return new TokenDTO()
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+            };
+            #endregion B สร้าง accessToken refreshToken ให้ใหม่
         }
 
         protected (bool isSuccessful, string userId, string tokenId) GetAccessTokenData(string accessToken)
