@@ -149,6 +149,20 @@ namespace MagicVilla_VillaAPI.Repository
             }
 
             // When someone tries to use not valid refresh token, fraud possible
+            //เมื่อมีคนพยายามใช้โทเค็นรีเฟรชที่ไม่ถูกต้อง อาจเกิดการบุกรุกได้
+            if (!existingRefreshToken.IsValid)
+            {
+                var chainRecords = _db.RefreshTokens.Where(u => u.UserId == existingRefreshToken.UserId
+                && u.JwtTokenId == existingRefreshToken.JwtTokenId);
+
+                foreach (var item in chainRecords)
+                {
+                    item.IsValid = false;
+                }
+                _db.UpdateRange(chainRecords);
+                _db.SaveChanges();
+                return new TokenDTO();
+            }
 
             // If just expired then mark as invalid and return empty
             // ถ้าโทเคนหมดอายุ ให้ส่งค่าว่างกลับไป
