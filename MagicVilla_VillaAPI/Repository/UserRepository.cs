@@ -116,7 +116,7 @@ namespace MagicVilla_VillaAPI.Repository
                      new Claim(JwtRegisteredClaimNames.Jti, jwtTokenId),
                      new Claim(JwtRegisteredClaimNames.Sub, user.Id)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(2),
+                Expires = DateTime.UtcNow.AddMinutes(1),
                 SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -166,6 +166,7 @@ namespace MagicVilla_VillaAPI.Repository
             var newRefreshToken = await CreateNewRefreshToken(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
 
             // revoke existing refresh token
+            // เปลี่ยนสถานะของเดิมให้เป็น false (ยกเลิกการใช้งาน)
             existingRefreshToken.IsValid = false;
             _db.SaveChanges();
 
@@ -209,7 +210,7 @@ namespace MagicVilla_VillaAPI.Repository
                 IsValid = true,
                 UserId = userId,
                 JwtTokenId = tokenId,
-                ExpiresAt = DateTime.UtcNow.AddDays(2),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(1),
                 Refresh_Token = Guid.NewGuid() + "-" + Guid.NewGuid(),
             };
 
