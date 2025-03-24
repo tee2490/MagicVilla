@@ -124,9 +124,24 @@ namespace MagicVilla_VillaAPI.Repository
             return tokenStr;
         }
 
+        //ขั้นตอนการ refresh token
         public Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
         {
-            throw new NotImplementedException();
+            // Find an existing refresh token
+
+
+            // Compare data from existing refresh and access token provided and if there is any missmatch then consider it as a fraud
+
+            // When someone tries to use not valid refresh token, fraud possible
+
+            // If just expired then mark as invalid and return empty
+
+            // replace old refresh with a new one with updated expire date
+
+            // revoke existing refresh token
+
+            // generate new access token
+            return null;
         }
 
         protected (bool isSuccessful, string userId, string tokenId) GetAccessTokenData(string accessToken)
