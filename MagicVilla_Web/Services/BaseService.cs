@@ -3,8 +3,12 @@ using MagicVilla_ClassLibrary.Models.Dto;
 using MagicVilla_ClassLibrary.Utility;
 using MagicVilla_Web.Services.IServices;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Newtonsoft.Json;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 
 namespace MagicVilla_Web.Services
@@ -171,12 +175,25 @@ namespace MagicVilla_Web.Services
                         return response;
 
                     // IF this fails then we can pass refresh token!
+                    if (!response.IsSuccessStatusCode && response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        //GENERATE NEW Token from Refresh token / Sign in with that new token and then retry
+                        await InvokeRefreshTokenEndpoint(httpClient, tokenDTO.AccessToken, tokenDTO.RefreshToken);
+                        response = await httpClient.SendAsync(httpRequestMessageFactory());
+                        return response;
+                    }
 
                     return response;
 
                 }
-                catch (Exception e)
+                catch (HttpRequestException httpRequestException)
                 {
+                    if (httpRequestException.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        // refresh token and retry the request
+                        await InvokeRefreshTokenEndpoint(httpClient, tokenDTO.AccessToken, tokenDTO.RefreshToken);
+                        return await httpClient.SendAsync(httpRequestMessageFactory());
+                    }
                     throw;
                 }
             }
@@ -211,11 +228,25 @@ namespace MagicVilla_Web.Services
                 if (tokenDto != null && !string.IsNullOrEmpty(tokenDto.AccessToken))
                 {
                     //New method to sign in with the new token that we receive
-
+                    await SignInWithNewTokens(tokenDto);
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenDto.AccessToken);
                 }
             }
         }
 
+
+        private async Task SignInWithNewTokens(TokenDTO tokenDTO)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(tokenDTO.AccessToken);
+
+            var identity = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
+            identity.AddClaim(new Claim(ClaimTypes.Name, jwt.Claims.FirstOrDefault(u => u.Type == "unique_name").Value));
+            identity.AddClaim(new Claim(ClaimTypes.Role, jwt.Claims.FirstOrDefault(u => u.Type == "role").Value));
+            var principal = new ClaimsPrincipal(identity);
+            await _httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            _tokenProvider.SetToken(tokenDTO);
+        }
     }
 }
