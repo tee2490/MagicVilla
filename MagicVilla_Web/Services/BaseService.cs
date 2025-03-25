@@ -1,4 +1,5 @@
 ﻿using MagicVilla_ClassLibrary.Models;
+using MagicVilla_ClassLibrary.Models.Dto;
 using MagicVilla_ClassLibrary.Utility;
 using MagicVilla_Web.Services.IServices;
 using Newtonsoft.Json;
@@ -102,20 +103,14 @@ namespace MagicVilla_Web.Services
 
                 HttpResponseMessage apiResponse = null;
 
-                //แนบโทเคนไปกับ header
-                //if (!string.IsNullOrEmpty(apiRequest.Token))
-                //{
-                //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiRequest.Token);
-                //}
-
-                apiResponse = await client.SendAsync(messageFactory());
+                apiResponse = await SendWithRefreshTokenAsync(client, messageFactory, withBearer);
 
                 var apiContent = await apiResponse.Content.ReadAsStringAsync();
                 try
                 {
                     APIResponse ApiResponse = JsonConvert.DeserializeObject<APIResponse>(apiContent);
-                    if (apiResponse.StatusCode == System.Net.HttpStatusCode.BadRequest
-                        || apiResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    if (ApiResponse != null && (apiResponse.StatusCode == System.Net.HttpStatusCode.BadRequest
+                        || apiResponse.StatusCode == System.Net.HttpStatusCode.NotFound))
                     {
                         ApiResponse.StatusCode = System.Net.HttpStatusCode.BadRequest;
                         ApiResponse.IsSuccess = false;
@@ -144,5 +139,40 @@ namespace MagicVilla_Web.Services
                 return APIResponse;
             }
         }
+
+        private async Task<HttpResponseMessage> SendWithRefreshTokenAsync(HttpClient httpClient,
+            Func<HttpRequestMessage> httpRequestMessageFactory, bool withBearer = true)
+        {
+
+            if (!withBearer)
+            {
+                return await httpClient.SendAsync(httpRequestMessageFactory());
+            }
+            else
+            {
+                TokenDTO tokenDTO = _tokenProvider.GetToken();
+                if (tokenDTO != null && !string.IsNullOrEmpty(tokenDTO.AccessToken))
+                {
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenDTO.AccessToken);
+                }
+
+                try
+                {
+                    var response = await httpClient.SendAsync(httpRequestMessageFactory());
+                    if (response.IsSuccessStatusCode)
+                        return response;
+
+                    // IF this fails then we can pass refresh token!
+
+                    return response;
+
+                }
+                catch (Exception e)
+                {
+                    throw;
+                }
+            }
+        }
+
     }
 }
