@@ -16,7 +16,6 @@ namespace MagicVilla_Web.Services
     public class BaseService : IBaseService
     {
         private readonly ITokenProvider _tokenProvider;
-        private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
         protected readonly string VillaApiUrl;
 
@@ -29,7 +28,6 @@ namespace MagicVilla_Web.Services
             this.responseModel = new();
             this.httpClient = httpClient;
             _tokenProvider = tokenProvider;
-            _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
             VillaApiUrl = configuration.GetValue<string>("ServiceUrls:VillaAPI");
         }
@@ -110,27 +108,42 @@ namespace MagicVilla_Web.Services
 
                 apiResponse = await SendWithRefreshTokenAsync(client, messageFactory, withBearer);
 
-                var apiContent = await apiResponse.Content.ReadAsStringAsync();
+                APIResponse FinalApiResponse = new()
+                {
+                    IsSuccess = false
+                };
+
                 try
                 {
-                    APIResponse ApiResponse = JsonConvert.DeserializeObject<APIResponse>(apiContent);
-                    if (ApiResponse != null && (apiResponse.StatusCode == System.Net.HttpStatusCode.BadRequest
-                        || apiResponse.StatusCode == System.Net.HttpStatusCode.NotFound))
+                    switch (apiResponse.StatusCode)
                     {
-                        ApiResponse.StatusCode = System.Net.HttpStatusCode.BadRequest;
-                        ApiResponse.IsSuccess = false;
-                        var res = JsonConvert.SerializeObject(ApiResponse);
-                        var returnObj = JsonConvert.DeserializeObject<T>(res);
-                        return returnObj;
+                        case HttpStatusCode.NotFound:
+                            FinalApiResponse.ErrorMessages = new List<string>() { "Not Found" };
+                            break;
+                        case HttpStatusCode.Forbidden:
+                            FinalApiResponse.ErrorMessages = new List<string>() { "Access Denied" };
+                            break;
+                        case HttpStatusCode.Unauthorized:
+                            FinalApiResponse.ErrorMessages = new List<string>() { "Unauthorized" };
+                            break;
+                        case HttpStatusCode.InternalServerError:
+                            FinalApiResponse.ErrorMessages = new List<string>() { "Internal Server Error" };
+                            break;
+                        default:
+                            var apiContent = await apiResponse.Content.ReadAsStringAsync();
+                            FinalApiResponse.IsSuccess = true;
+                            FinalApiResponse = JsonConvert.DeserializeObject<APIResponse>(apiContent);
+                            break;
                     }
                 }
                 catch (Exception e)
                 {
-                    var exceptionResponse = JsonConvert.DeserializeObject<T>(apiContent);
-                    return exceptionResponse;
+                    FinalApiResponse.ErrorMessages = new List<string>() { "Error Encountered", e.Message.ToString() };
                 }
-                var APIResponse = JsonConvert.DeserializeObject<T>(apiContent);
-                return APIResponse;
+                var res = JsonConvert.SerializeObject(FinalApiResponse);
+                var returnObj = JsonConvert.DeserializeObject<T>(res);
+                return returnObj;
+
             }
             catch (Exception e)
             {
