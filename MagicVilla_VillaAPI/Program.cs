@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.EntityFrameworkCore;
+using Autofac.Extensions.DependencyInjection;
+using Autofac;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,9 +60,14 @@ builder.Services.AddAuthentication(x =>
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 
-builder.Services.AddScoped<IVillaRepository, VillaRepository>();
-builder.Services.AddScoped<IVillaNumberRepository, VillaNumberRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+//ใช้ AutoFac ลงทะเบียนโดยอัตโนมัติกรณีมีหลายๆ Service
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory(containerBuilder =>
+{
+    containerBuilder.RegisterAssemblyTypes(Assembly.GetExecutingAssembly())
+    .Where(t => t.Name.EndsWith("Repository") || t.Name.EndsWith("Test"))
+    .AsImplementedInterfaces()
+    .InstancePerLifetimeScope(); // เทียบเท่า AddScoped;
+}));
 
 builder.Services.AddResponseCaching();
 
