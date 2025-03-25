@@ -139,12 +139,10 @@ namespace MagicVilla_VillaAPI.Repository
             #region A ตรวจสอบความถูกต้องของโทเคนที่ส่งมาเข้า
             // Compare data from existing refresh and access token provided and if there is any missmatch then consider it as a fraud
             // ตรวจสอบว่า accesstoken ที่ส่งเข้ามาถูกต้องหรือไม่
-            var accessTokenData = GetAccessTokenData(tokenDTO.AccessToken);
-            if (!accessTokenData.isSuccessful || accessTokenData.userId != existingRefreshToken.UserId
-                || accessTokenData.tokenId != existingRefreshToken.JwtTokenId)
+            var isTokenValid = GetAccessTokenData(tokenDTO.AccessToken, existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            if (!isTokenValid)
             {
-                existingRefreshToken.IsValid = false;
-                _db.SaveChanges();
+                await MarkTokenAsInvalid(existingRefreshToken);
                 return new TokenDTO();
             }
 
@@ -152,19 +150,14 @@ namespace MagicVilla_VillaAPI.Repository
             //เมื่อมีคนพยายามใช้โทเค็นรีเฟรชที่ไม่ถูกต้อง อาจเกิดการบุกรุกได้
             if (!existingRefreshToken.IsValid)
             {
-                var chainRecords = _db.RefreshTokens.Where(u => u.UserId == existingRefreshToken.UserId
-                && u.JwtTokenId == existingRefreshToken.JwtTokenId)
-                    .ExecuteUpdate(u => u.SetProperty(refreshToken => refreshToken.IsValid, false));
-                
-                return new TokenDTO();
+                await MarkAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
             }
 
             // If just expired then mark as invalid and return empty
             // ถ้าโทเคนหมดอายุ ให้ส่งค่าว่างกลับไป
             if (existingRefreshToken.ExpiresAt < DateTime.UtcNow)
             {
-                existingRefreshToken.IsValid = false;
-                _db.SaveChanges();
+                await MarkTokenAsInvalid(existingRefreshToken);
                 return new TokenDTO();
             }
             #endregion A ตรวจสอบความถูกต้องของโทเคนที่ส่งมาเข้า
@@ -176,8 +169,7 @@ namespace MagicVilla_VillaAPI.Repository
 
             // revoke existing refresh token
             // เปลี่ยนสถานะของเดิมให้เป็น false (ยกเลิกการใช้งาน)
-            existingRefreshToken.IsValid = false;
-            _db.SaveChanges();
+            await MarkTokenAsInvalid(existingRefreshToken);
 
             // generate new access token
             // สร้าง accessToken ใหม่
@@ -195,7 +187,7 @@ namespace MagicVilla_VillaAPI.Repository
             #endregion B สร้าง accessToken refreshToken ให้ใหม่
         }
 
-        protected (bool isSuccessful, string userId, string tokenId) GetAccessTokenData(string accessToken)
+        private bool GetAccessTokenData(string accessToken, string expectedUserId, string expectedTokenId)
         {
             try
             {
@@ -203,12 +195,12 @@ namespace MagicVilla_VillaAPI.Repository
                 var jwt = tokenHandler.ReadJwtToken(accessToken);
                 var jwtTokenId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Jti).Value;
                 var userId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Sub).Value;
-                return (true, userId, jwtTokenId);
+                return userId == expectedUserId && jwtTokenId == expectedTokenId;
 
             }
             catch
             {
-                return (false, null, null);
+                return false;
             }
         }
 
@@ -226,6 +218,19 @@ namespace MagicVilla_VillaAPI.Repository
             await _db.RefreshTokens.AddAsync(refreshToken);
             await _db.SaveChangesAsync();
             return refreshToken.Refresh_Token;
+        }
+
+        private async Task MarkAllTokenInChainAsInvalid(string userId, string tokenId)
+        {
+            await _db.RefreshTokens.Where(u => u.UserId == userId
+               && u.JwtTokenId == tokenId)
+                   .ExecuteUpdateAsync(u => u.SetProperty(refreshToken => refreshToken.IsValid, false));
+        }
+
+        private Task MarkTokenAsInvalid(RefreshToken refreshToken)
+        {
+            refreshToken.IsValid = false;
+            return _db.SaveChangesAsync();
         }
     }
 }
